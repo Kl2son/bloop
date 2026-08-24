@@ -1,0 +1,22 @@
+# Root
+.DS_Store
+*.log
+
+# Dependencies
+node_modules/
+
+# Build
+dist/
+frontend/dist/
+backend/dist/
+
+# Env
+.env
+.env.local
+*.local
+
+# User uploads (keep folder structure only)
+backend/uploads/audio/*
+backend/uploads/covers/*
+!backend/uploads/audio/.gitkeep
+!backend/uploads/covers/.gitkeep
