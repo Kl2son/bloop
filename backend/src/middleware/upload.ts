@@ -13,7 +13,11 @@ import multer from 'multer';
  * 4) кладёт файлы в req.files.
  */
 
-const UPLOADS_ROOT = path.resolve(__dirname, '../../uploads');
+/**
+ * Корень загрузок: process.cwd() — папка backend на Render (Root Directory),
+ * а не относительный путь от dist/middleware (ломается при другом layout).
+ */
+const UPLOADS_ROOT = path.resolve(process.cwd(), 'uploads');
 const AUDIO_DIR = path.join(UPLOADS_ROOT, 'audio');
 const COVER_DIR = path.join(UPLOADS_ROOT, 'covers');
 

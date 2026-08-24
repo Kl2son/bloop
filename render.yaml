@@ -1,0 +1,14 @@
+# Render: Root Directory = backend
+# Build: npm install && npm run build
+# Start: npm start  →  node dist/index.js
+
+services:
+  - type: web
+    name: bloop-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
