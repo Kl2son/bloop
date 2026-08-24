@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import type { RequestHandler } from 'express';
 import { listBeats } from '../store/beats.store';
 import { Beat } from '../types';
 
@@ -181,7 +181,7 @@ function findBeatsByDetectedTags(detectedTags: string[]): Beat[] {
     .map(({ beat }) => beat);
 }
 
-export const searchByLyrics = (req: Request, res: Response): void => {
+export const searchByLyrics: RequestHandler = (req, res): void => {
   /*
    * req.body — объект после express.json().
    * Фронт шлёт: { "lyrics": "текст рифм..." }

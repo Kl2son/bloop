@@ -1,9 +1,10 @@
-import { Request, Response } from 'express';
+import type { RequestHandler } from 'express';
 
 /**
  * Stub: AI co-creation — generate extra MIDI/audio layers for beatmakers.
+ * RequestHandler — совместимый с Express Router тип (без конфликтов name/path).
  */
-export const coCreate = (_req: Request, res: Response): void => {
+export const coCreate: RequestHandler = (_req, res): void => {
   res.status(501).json({
     success: false,
     message: 'AI co-create is not implemented yet',
@@ -13,7 +14,7 @@ export const coCreate = (_req: Request, res: Response): void => {
 /**
  * Stub: generate simple demo sketches for rappers to test flow before purchase.
  */
-export const generateDemo = (_req: Request, res: Response): void => {
+export const generateDemo: RequestHandler = (_req, res): void => {
   res.status(501).json({
     success: false,
     message: 'AI generate-demo is not implemented yet',
@@ -23,7 +24,7 @@ export const generateDemo = (_req: Request, res: Response): void => {
 /**
  * Stub: automatic AI mixing & mastering of an uploaded beat.
  */
-export const mastering = (_req: Request, res: Response): void => {
+export const mastering: RequestHandler = (_req, res): void => {
   res.status(501).json({
     success: false,
     message: 'AI mastering is not implemented yet',

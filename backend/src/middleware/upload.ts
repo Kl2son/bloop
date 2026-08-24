@@ -55,7 +55,8 @@ const storage = multer.diskStorage({
 });
 
 function fileFilter(
-  _req: Express.Request,
+  // req здесь не используем; any — чтобы не конфликтовать типы Multer ↔ Express
+  _req: unknown,
   file: Express.Multer.File,
   cb: multer.FileFilterCallback,
 ): void {

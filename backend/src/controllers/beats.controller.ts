@@ -1,12 +1,18 @@
-import { Request, Response } from 'express';
+import type { Request, RequestHandler, Response } from 'express';
 import { addBeat, findBeatById, listBeats } from '../store/beats.store';
 
-export const getBeats = (_req: Request, res: Response): void => {
+/** Достаёт строковый param из Express (в новых типах может быть string | string[]) */
+function paramId(req: Request): string {
+  const raw = req.params.id;
+  return Array.isArray(raw) ? String(raw[0] ?? '') : String(raw ?? '');
+}
+
+export const getBeats: RequestHandler = (_req, res): void => {
   res.json({ success: true, data: listBeats() });
 };
 
-export const getBeatById = (req: Request, res: Response): void => {
-  const beat = findBeatById(req.params.id);
+export const getBeatById: RequestHandler = (req, res): void => {
+  const beat = findBeatById(paramId(req));
 
   if (!beat) {
     res.status(404).json({ success: false, message: 'Beat not found' });
@@ -38,7 +44,7 @@ export const getBeatById = (req: Request, res: Response): void => {
  *
  * 4. Клиент получает созданный бит и может сразу показать его в ленте.
  */
-export const uploadBeat = (req: Request, res: Response): void => {
+export const uploadBeat: RequestHandler = (req, res): void => {
   try {
     // Multer кладёт несколько файлов в объект по имени поля формы
     const files = req.files as

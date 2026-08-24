@@ -1,4 +1,5 @@
-import { NextFunction, Request, Response, Router } from 'express';
+import { Router } from 'express';
+import type { RequestHandler } from 'express';
 import {
   getBeatById,
   getBeats,
@@ -12,11 +13,12 @@ router.get('/', getBeats);
 
 /**
  * /upload объявляем ДО /:id, иначе Express примет "upload" как id.
- * beatUpload — Multer: парсит FormData, пишет файлы на диск, затем uploadBeat.
+ * Multer приводим к RequestHandler — иначе TS путает оверлоады Router
+ * (ошибки про несовместимость name/path / PathParams).
  */
-router.post('/upload', (req: Request, res: Response, next: NextFunction) => {
-  beatUpload(req, res, (err: unknown) => {
-    // Ошибки Multer (тип файла, размер) отдаём клиенту понятным текстом
+const uploadMiddleware: RequestHandler = (req, res, next) => {
+  // any: типы Multer и Express Router иногда конфликтуют на оверлоадах
+  (beatUpload as any)(req, res, (err: unknown) => {
     if (err) {
       const message = err instanceof Error ? err.message : 'Ошибка загрузки';
       res.status(400).json({ success: false, message });
@@ -24,8 +26,9 @@ router.post('/upload', (req: Request, res: Response, next: NextFunction) => {
     }
     next();
   });
-}, uploadBeat);
+};
 
+router.post('/upload', uploadMiddleware, uploadBeat);
 router.get('/:id', getBeatById);
 
 export default router;
