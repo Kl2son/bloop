@@ -75,33 +75,3 @@ create policy "Public delete beats objects"
   on storage.objects for delete
   to public
   using (bucket_id = 'beats');
-
--- 4) Демо-каталог (только если таблица пустая)
-insert into public.beats (title, artist, price, bpm, mood, key, tags, audio_url, cover_url)
-select * from (values
-  ('Midnight Drive', 'NovaBeats', 29::numeric, 140, 'dark, atmospheric', 'Am',
-    array['Dark','Atmospheric']::text[],
-    'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    'https://picsum.photos/seed/bloop1/600/600'),
-  ('Soft Flex', 'Kairo', 35::numeric, 92, 'chill, melodic', 'F',
-    array['Melodic','Chill']::text[],
-    'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-    'https://picsum.photos/seed/bloop2/600/600'),
-  ('Concrete Echo', 'GrayRoom', 42::numeric, 150, 'hard, industrial', 'Em',
-    array['Dark','Drill','Hard']::text[],
-    'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-    'https://picsum.photos/seed/bloop3/600/600'),
-  ('Late Night Text', 'Lumen', 25::numeric, 78, 'emotional, intimate', 'C',
-    array['Sad','Melodic']::text[],
-    'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
-    'https://picsum.photos/seed/bloop4/600/600'),
-  ('Gold Dust', 'MiraSound', 49::numeric, 110, 'uplifting, warm', 'G',
-    array['Uplifting','Melodic']::text[],
-    'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
-    'https://picsum.photos/seed/bloop5/600/600'),
-  ('Smoke Signal', 'DriftLab', 31::numeric, 135, 'trap, hazy', 'Dm',
-    array['Dark','Trap','Drill']::text[],
-    'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
-    'https://picsum.photos/seed/bloop6/600/600')
-) as seed(title, artist, price, bpm, mood, key, tags, audio_url, cover_url)
-where not exists (select 1 from public.beats limit 1);
