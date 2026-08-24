@@ -13,6 +13,8 @@ interface BeatsState {
   fetchBeats: () => Promise<void>;
   /** Добавить только что загруженный бит в начало ленты */
   prependBeat: (beat: Beat) => void;
+  /** Убрать бит из ленты после DELETE */
+  removeBeat: (id: string) => void;
 }
 
 export const useBeatsStore = create<BeatsState>((set) => ({
@@ -36,5 +38,10 @@ export const useBeatsStore = create<BeatsState>((set) => ({
   prependBeat: (beat) =>
     set((state) => ({
       beats: [beat, ...state.beats.filter((b) => b.id !== beat.id)],
+    })),
+
+  removeBeat: (id) =>
+    set((state) => ({
+      beats: state.beats.filter((b) => b.id !== id),
     })),
 }));

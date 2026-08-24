@@ -2,11 +2,7 @@ import { useEffect } from 'react';
 import { TrackCard } from '../tracks/TrackCard';
 import { useBeatsStore } from '../../store/beatsStore';
 import { useNavStore } from '../../store/navStore';
-
-/** Загруженные пользователем биты — файлы лежат в /uploads */
-function isUploadedBeat(audioUrl: string, coverUrl: string): boolean {
-  return audioUrl.startsWith('/uploads') || coverUrl.startsWith('/uploads');
-}
+import { isUploadedBeat } from '../../services/media';
 
 /**
  * Раздел «Мои биты»: список загруженных треков
@@ -18,7 +14,7 @@ export function MyBeatsPage() {
   const fetchBeats = useBeatsStore((s) => s.fetchBeats);
   const setPage = useNavStore((s) => s.setPage);
 
-  const myBeats = beats.filter((b) => isUploadedBeat(b.audioUrl, b.coverUrl));
+  const myBeats = beats.filter((b) => isUploadedBeat(b));
 
   useEffect(() => {
     void fetchBeats();

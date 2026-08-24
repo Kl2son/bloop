@@ -1,5 +1,15 @@
-import type { Request, RequestHandler, Response } from 'express';
-import { addBeat, findBeatById, listBeats } from '../store/beats.store';
+import fs from 'fs';
+import path from 'path';
+import type { Request, RequestHandler } from 'express';
+import {
+  addBeat,
+  findBeatById,
+  listBeats,
+  removeBeatById,
+} from '../store/beats.store';
+import type { Beat } from '../types';
+import { AUDIO_DIR, COVER_DIR } from '../middleware/upload';
+import { toAbsoluteMediaUrl } from '../utils/publicUrl';
 
 /** Достаёт строковый param из Express (в новых типах может быть string | string[]) */
 function paramId(req: Request): string {
@@ -7,8 +17,20 @@ function paramId(req: Request): string {
   return Array.isArray(raw) ? String(raw[0] ?? '') : String(raw ?? '');
 }
 
-export const getBeats: RequestHandler = (_req, res): void => {
-  res.json({ success: true, data: listBeats() });
+/** Относительные /uploads → абсолютный URL бэкенда (Vercel иначе ищет файл у себя) */
+function withAbsoluteMedia(beat: Beat, req: Request): Beat {
+  return {
+    ...beat,
+    audioUrl: toAbsoluteMediaUrl(beat.audioUrl, req),
+    coverUrl: toAbsoluteMediaUrl(beat.coverUrl, req),
+  };
+}
+
+export const getBeats: RequestHandler = (req, res): void => {
+  res.json({
+    success: true,
+    data: listBeats().map((beat) => withAbsoluteMedia(beat, req)),
+  });
 };
 
 export const getBeatById: RequestHandler = (req, res): void => {
@@ -19,7 +41,7 @@ export const getBeatById: RequestHandler = (req, res): void => {
     return;
   }
 
-  res.json({ success: true, data: beat });
+  res.json({ success: true, data: withAbsoluteMedia(beat, req) });
 };
 
 /**
@@ -40,7 +62,7 @@ export const getBeatById: RequestHandler = (req, res): void => {
  *    - файлы — в req.files как { audio: [...], cover: [...] }
  *
  * 3. Этот контроллер валидирует поля, собирает объект Beat
- *    с публичными URL (/uploads/...) и добавляет его в память.
+ *    с абсолютными URL на этот сервер и добавляет его в память.
  *
  * 4. Клиент получает созданный бит и может сразу показать его в ленте.
  */
@@ -96,19 +118,22 @@ export const uploadBeat: RequestHandler = (req, res): void => {
       return;
     }
 
-    // Публичные URL: Express раздаёт /uploads как статику (см. app.ts)
+    // В памяти храним относительные пути; в ответе клиенту — абсолютные
+    const relativeAudio = `/uploads/audio/${audioFile.filename}`;
+    const relativeCover = `/uploads/covers/${coverFile.filename}`;
+
     const beat = addBeat({
       title,
       author,
       price,
       bpm,
-      audioUrl: `/uploads/audio/${audioFile.filename}`,
-      coverUrl: `/uploads/covers/${coverFile.filename}`,
+      audioUrl: relativeAudio,
+      coverUrl: relativeCover,
     });
 
     res.status(201).json({
       success: true,
-      data: beat,
+      data: withAbsoluteMedia(beat, req),
       message: 'Бит успешно загружен',
     });
   } catch (err) {
@@ -116,4 +141,72 @@ export const uploadBeat: RequestHandler = (req, res): void => {
       err instanceof Error ? err.message : 'Не удалось загрузить бит';
     res.status(500).json({ success: false, message });
   }
+};
+
+/**
+ * Извлекает имя файла только из наших /uploads/... путей.
+ * Внешние URL (SoundHelix и т.п.) не трогаем — там нечего удалять с диска.
+ */
+function localUploadFilename(mediaUrl: string, kind: 'audio' | 'cover'): string | null {
+  try {
+    const pathname = /^https?:\/\//i.test(mediaUrl)
+      ? new URL(mediaUrl).pathname
+      : mediaUrl;
+    const prefix = kind === 'audio' ? '/uploads/audio/' : '/uploads/covers/';
+    if (!pathname.startsWith(prefix)) return null;
+    const name = path.basename(pathname);
+    // Защита от path traversal: basename уже отбрасывает "../"
+    if (!name || name === '.' || name === '..') return null;
+    return name;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Удаляет файл с диска через fs.unlink.
+ *
+ * fs.unlink(path, callback) — асинхронно стирает файл по абсолютному пути.
+ * Если файла уже нет (ENOENT) — это не ошибка для нашего сценария:
+ * запись из памяти всё равно удаляем. Другие ошибки логируем, но
+ * ответ клиенту не блокируем.
+ */
+function unlinkUploadFile(absolutePath: string): void {
+  fs.unlink(absolutePath, (err) => {
+    if (!err) return;
+    // ENOENT = файла нет — возможно, уже удалили вручную
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+    console.error('Не удалось удалить файл:', absolutePath, err.message);
+  });
+}
+
+/**
+ * DELETE /api/beats/:id
+ * Удаляет бит из in-memory каталога и физические mp3/jpg из /uploads.
+ */
+export const deleteBeat: RequestHandler = (req, res): void => {
+  const id = paramId(req);
+  const removed = removeBeatById(id);
+
+  if (!removed) {
+    res.status(404).json({ success: false, message: 'Beat not found' });
+    return;
+  }
+
+  const audioName = localUploadFilename(removed.audioUrl, 'audio');
+  const coverName = localUploadFilename(removed.coverUrl, 'cover');
+
+  // fs.unlink стирает файл с диска; путь собираем только внутри AUDIO_DIR / COVER_DIR
+  if (audioName) {
+    unlinkUploadFile(path.join(AUDIO_DIR, audioName));
+  }
+  if (coverName) {
+    unlinkUploadFile(path.join(COVER_DIR, coverName));
+  }
+
+  res.json({
+    success: true,
+    data: { id },
+    message: 'Бит удалён',
+  });
 };

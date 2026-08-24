@@ -1,6 +1,11 @@
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import type { Beat } from '../../types';
 import { usePlayer } from '../../hooks/usePlayer';
+import { usePlayerStore } from '../../store/playerStore';
+import { useBeatsStore } from '../../store/beatsStore';
+import { useNavStore } from '../../store/navStore';
+import { beatsService } from '../../services/beats.service';
+import { isUploadedBeat, mediaUrl } from '../../services/media';
 
 const COVER_TONES = [
   'from-[#2c3e3a] to-[#8fad9f]',
@@ -16,33 +21,56 @@ interface TrackCardProps {
 }
 
 export function TrackCard({ beat }: TrackCardProps) {
-  /**
-   * Берём экшены из Zustand через хук usePlayer.
-   * play(beat) кладёт этот бит в глобальный current и ставит isPlaying=true —
-   * PlayerBar / AudioEngine подписаны на стор и сразу подхватят трек.
-   */
   const { current, isPlaying, play, toggle } = usePlayer();
+  const stop = usePlayerStore((s) => s.stop);
+  const removeBeat = useBeatsStore((s) => s.removeBeat);
+  const setNotice = useNavStore((s) => s.setNotice);
+
   const tone =
     COVER_TONES[Number.parseInt(beat.id, 10) % COVER_TONES.length] ??
     COVER_TONES[0];
   const isActive = current?.id === beat.id;
   const [coverFailed, setCoverFailed] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const coverSrc = mediaUrl(beat.coverUrl);
+  const canDelete = isUploadedBeat(beat);
   const showCover =
-    Boolean(beat.coverUrl) &&
+    Boolean(coverSrc) &&
     !coverFailed &&
-    (beat.coverUrl.startsWith('/uploads') ||
-      beat.coverUrl.startsWith('http'));
+    (coverSrc.includes('/uploads') || coverSrc.startsWith('http'));
 
   const handlePlay = () => {
     if (isActive) {
       toggle();
       return;
     }
-    play(beat);
+    // В плеер кладём бит с абсолютным audioUrl
+    play({ ...beat, audioUrl: mediaUrl(beat.audioUrl), coverUrl: coverSrc });
   };
 
   const handleBuyOrPlay = () => {
-    play(beat);
+    play({ ...beat, audioUrl: mediaUrl(beat.audioUrl), coverUrl: coverSrc });
+  };
+
+  const handleDelete = async (event: MouseEvent) => {
+    event.stopPropagation();
+    if (deleting) return;
+
+    const ok = window.confirm(`Удалить «${beat.title}»?`);
+    if (!ok) return;
+
+    setDeleting(true);
+    try {
+      const response = await beatsService.delete(beat.id);
+      removeBeat(beat.id);
+      if (current?.id === beat.id) stop();
+      setNotice(response.message ?? 'Бит удалён');
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : 'Не удалось удалить');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -55,7 +83,7 @@ export function TrackCard({ beat }: TrackCardProps) {
       >
         {showCover ? (
           <img
-            src={beat.coverUrl}
+            src={coverSrc}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
             onError={() => setCoverFailed(true)}
@@ -69,6 +97,34 @@ export function TrackCard({ beat }: TrackCardProps) {
             }}
           />
         )}
+
+        {canDelete && (
+          <span
+            role="presentation"
+            className="absolute right-2 top-2 z-10 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition-opacity hover:bg-black/65 disabled:opacity-50"
+              aria-label={`Удалить ${beat.title}`}
+              title="Удалить"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d="M5 7h14M10 11v6M14 11v6M9 7V5h6v2M7 7l1 12h8l1-12"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </span>
+        )}
+
         <span className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white/90">
           <span className="text-xs tabular-nums opacity-80 drop-shadow">
             {beat.bpm ? `${beat.bpm} BPM` : ''}

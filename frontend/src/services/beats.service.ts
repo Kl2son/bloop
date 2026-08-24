@@ -37,4 +37,10 @@ export const beatsService = {
       body: formData,
     });
   },
+
+  delete(id: string): Promise<ApiResponse<{ id: string }>> {
+    return apiRequest<ApiResponse<{ id: string }>>(`/api/beats/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };

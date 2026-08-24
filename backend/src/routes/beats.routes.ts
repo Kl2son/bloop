@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { RequestHandler } from 'express';
 import {
+  deleteBeat,
   getBeatById,
   getBeats,
   uploadBeat,
@@ -30,5 +31,6 @@ const uploadMiddleware: RequestHandler = (req, res, next) => {
 
 router.post('/upload', uploadMiddleware, uploadBeat);
 router.get('/:id', getBeatById);
+router.delete('/:id', deleteBeat);
 
 export default router;

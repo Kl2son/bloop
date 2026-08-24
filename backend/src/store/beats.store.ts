@@ -96,3 +96,11 @@ export function addBeat(beat: Omit<Beat, 'id'>): Beat {
   beats.unshift(created);
   return created;
 }
+
+/** Удаляет бит из памяти. Возвращает удалённую запись или undefined. */
+export function removeBeatById(id: string): Beat | undefined {
+  const index = beats.findIndex((b) => b.id === id);
+  if (index === -1) return undefined;
+  const [removed] = beats.splice(index, 1);
+  return removed;
+}
