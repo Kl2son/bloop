@@ -4,6 +4,9 @@ export interface Beat {
   author: string;
   coverUrl: string;
   audioUrl: string;
+  /** Путь объекта в Supabase Storage (для удаления) */
+  audioPath?: string;
+  coverPath?: string;
   price: number;
   mood?: string;
   /** Теги для ИИ-подбора: Sad, Melodic, Dark, Drill и т.д. */

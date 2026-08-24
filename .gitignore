@@ -10,10 +10,13 @@ dist/
 frontend/dist/
 backend/dist/
 
-# Env
+# Env / secrets — никогда не коммитить
 .env
 .env.local
 *.local
+backend/.env
+backend/.env.production
+frontend/.env.local
 
 # User uploads (keep folder structure only)
 backend/uploads/audio/*

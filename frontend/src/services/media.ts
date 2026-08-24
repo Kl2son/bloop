@@ -14,9 +14,12 @@ export function mediaUrl(url: string): string {
   return `${base}${path}`;
 }
 
-/** Загруженный пользователем бит (лежит в /uploads), не mock SoundHelix */
+/** Загруженный пользователем бит (Supabase Storage или старый /uploads) */
 export function isUploadedBeat(beat: { audioUrl: string; coverUrl: string }): boolean {
+  const urls = `${beat.audioUrl} ${beat.coverUrl}`;
   return (
-    beat.audioUrl.includes('/uploads/') || beat.coverUrl.includes('/uploads/')
+    urls.includes('/uploads/') ||
+    urls.includes('/storage/v1/object/') ||
+    urls.includes('.supabase.co/')
   );
 }

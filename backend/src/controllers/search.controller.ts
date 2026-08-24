@@ -1,6 +1,7 @@
 import type { RequestHandler } from 'express';
 import { listBeats } from '../store/beats.store';
-import { Beat } from '../types';
+import type { Beat } from '../types';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 /**
  * POST /api/search/by-lyrics
@@ -149,20 +150,14 @@ function getBeatTags(beat: Beat): string[] {
  *
  * ─── Как бэкенд фильтрует массивы ───
  *
- * 1. listBeats() возвращает массив Beat[] из памяти.
- * 2. .filter(beat => …) оставляет только элементы, где условие true.
- *    Для каждого бита проверяем пересечение его тегов с detectedTags.
- * 3. .map(beat => ({ … })) добавляет поле matchScore — сколько тегов совпало.
- * 4. .sort((a, b) => b.matchScore - a.matchScore) — сильнее совпадение выше.
- *
- * Пересечение тегов: beatTags.some(tag => detectedSet.has(tag))
- * — «есть ли хотя бы один общий тег».
+ * 1. listBeats() читает таблицу beats из Supabase (PostgreSQL).
+ * 2. .filter / .map / .sort — обычная работа с массивом в Node.
  */
-function findBeatsByDetectedTags(detectedTags: string[]): Beat[] {
-  const catalog = listBeats();
-
+function findBeatsByDetectedTags(
+  catalog: Beat[],
+  detectedTags: string[],
+): Beat[] {
   if (detectedTags.length === 0) {
-    // Ничего не распознали — отдаём весь каталог (fallback)
     return catalog;
   }
 
@@ -181,12 +176,7 @@ function findBeatsByDetectedTags(detectedTags: string[]): Beat[] {
     .map(({ beat }) => beat);
 }
 
-export const searchByLyrics: RequestHandler = (req, res): void => {
-  /*
-   * req.body — объект после express.json().
-   * Фронт шлёт: { "lyrics": "текст рифм..." }
-   * Поле может отсутствовать или быть не строкой — проверяем ниже.
-   */
+export const searchByLyrics: RequestHandler = async (req, res): Promise<void> => {
   const rawLyrics = req.body?.lyrics;
   const lyrics = typeof rawLyrics === 'string' ? rawLyrics.trim() : '';
 
@@ -206,23 +196,34 @@ export const searchByLyrics: RequestHandler = (req, res): void => {
     return;
   }
 
-  // «Нейросеть» сканирует текст и возвращает теги настроения
-  const { detectedTags, matchedKeywords } = analyzeLyricsWithAiStub(lyrics);
+  try {
+    if (!isSupabaseConfigured()) {
+      res.status(503).json({
+        success: false,
+        message: 'Supabase не настроен (SUPABASE_URL / SUPABASE_KEY)',
+      });
+      return;
+    }
 
-  // Фильтруем mock-каталог по этим тегам
-  const results = findBeatsByDetectedTags(detectedTags);
+    const { detectedTags, matchedKeywords } = analyzeLyricsWithAiStub(lyrics);
+    const catalog = await listBeats();
+    const results = findBeatsByDetectedTags(catalog, detectedTags);
 
-  res.json({
-    success: true,
-    data: results,
-    message:
-      detectedTags.length > 0
-        ? `Подобрано ${results.length} бит(ов) по настроению текста`
-        : 'Ключевые слова не найдены — показан полный каталог',
-    meta: {
-      detectedTags,
-      matchedKeywords,
-      lyricsLength: lyrics.length,
-    },
-  });
+    res.json({
+      success: true,
+      data: results,
+      message:
+        detectedTags.length > 0
+          ? `Подобрано ${results.length} бит(ов) по настроению текста`
+          : 'Ключевые слова не найдены — показан полный каталог',
+      meta: {
+        detectedTags,
+        matchedKeywords,
+        lyricsLength: lyrics.length,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Ошибка поиска';
+    res.status(500).json({ success: false, message });
+  }
 };

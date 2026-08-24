@@ -7,7 +7,9 @@
 | Слой | Технологии |
 |------|------------|
 | Frontend | React (Vite) · TypeScript · Tailwind CSS · Zustand |
-| Backend | Node.js · Express · TypeScript |
+| Backend | Node.js · Express · TypeScript · Supabase (PostgreSQL + Storage) |
+
+Хранение битов: см. [backend/SUPABASE_SETUP.md](backend/SUPABASE_SETUP.md).
 
 ## Структура
 

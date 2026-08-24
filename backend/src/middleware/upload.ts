@@ -1,61 +1,19 @@
-import fs from 'fs';
-import path from 'path';
 import multer from 'multer';
 
 /**
- * Multer — middleware для приёма multipart/form-data (файлы + текстовые поля).
+ * Multer в режиме memoryStorage:
+ * файлы НЕ пишутся на диск Render, а остаются в req.file.buffer.
+ * Дальше контроллер отправляет buffer в Supabase Storage.
  *
- * Браузер шлёт FormData; Express сам по себе не разбирает бинарные части.
- * Multer:
- * 1) читает поток запроса,
- * 2) сохраняет файлы на диск (diskStorage),
- * 3) кладёт текстовые поля в req.body,
- * 4) кладёт файлы в req.files.
+ * Так перезапуск сервера не теряет медиа — они уже в облаке.
  */
 
-/**
- * Корень загрузок: process.cwd() — папка backend на Render (Root Directory),
- * а не относительный путь от dist/middleware (ломается при другом layout).
- */
-const UPLOADS_ROOT = path.resolve(process.cwd(), 'uploads');
-const AUDIO_DIR = path.join(UPLOADS_ROOT, 'audio');
-const COVER_DIR = path.join(UPLOADS_ROOT, 'covers');
-
-// Гарантируем, что папки существуют при старте сервера
-for (const dir of [UPLOADS_ROOT, AUDIO_DIR, COVER_DIR]) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-}
-
-export { UPLOADS_ROOT, AUDIO_DIR, COVER_DIR };
-
-/** Уникальное имя файла: timestamp + безопасный оригинал */
 function uniqueName(originalName: string): string {
   const safe = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
   return `${Date.now()}-${safe}`;
 }
 
-const storage = multer.diskStorage({
-  destination(req, file, cb) {
-    // Поле формы "audio" → /uploads/audio, "cover" → /uploads/covers
-    if (file.fieldname === 'audio') {
-      cb(null, AUDIO_DIR);
-      return;
-    }
-    if (file.fieldname === 'cover') {
-      cb(null, COVER_DIR);
-      return;
-    }
-    cb(new Error(`Unknown upload field: ${file.fieldname}`), UPLOADS_ROOT);
-  },
-  filename(_req, file, cb) {
-    cb(null, uniqueName(file.originalname));
-  },
-});
-
 function fileFilter(
-  // req здесь не используем; any — чтобы не конфликтовать типы Multer ↔ Express
   _req: unknown,
   file: Express.Multer.File,
   cb: multer.FileFilterCallback,
@@ -64,9 +22,13 @@ function fileFilter(
     const ok =
       file.mimetype === 'audio/mpeg' ||
       file.mimetype === 'audio/mp3' ||
-      file.originalname.toLowerCase().endsWith('.mp3');
+      file.originalname.toLowerCase().endsWith('.mp3') ||
+      file.originalname.toLowerCase().endsWith('.wav') ||
+      file.mimetype === 'audio/wav' ||
+      file.mimetype === 'audio/x-wav' ||
+      file.mimetype === 'audio/wave';
     if (!ok) {
-      cb(new Error('Аудио должно быть в формате MP3'));
+      cb(new Error('Аудио должно быть MP3 или WAV'));
       return;
     }
     cb(null, true);
@@ -89,19 +51,15 @@ function fileFilter(
   cb(new Error(`Unknown field: ${file.fieldname}`));
 }
 
-/**
- * Ожидаем ровно два файла из формы:
- * - audio — MP3 бита
- * - cover — JPG/PNG обложка
- * Текстовые поля (title, author, price, bpm) придут в req.body.
- */
 export const beatUpload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: {
-    fileSize: 30 * 1024 * 1024, // 30 MB на файл
+    fileSize: 30 * 1024 * 1024,
   },
 }).fields([
   { name: 'audio', maxCount: 1 },
   { name: 'cover', maxCount: 1 },
 ]);
+
+export { uniqueName };
