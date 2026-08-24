@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { NavItem } from '../../types';
 import { useNavStore, type AppPage } from '../../store/navStore';
+import { ThemeToggle } from './ThemeToggle';
 
 const NAV: NavItem[] = [
   { id: 'browse', label: 'Каталог' },
@@ -44,7 +45,7 @@ export function Sidebar() {
               className={`rounded-md px-2 py-2 text-left text-sm transition-colors ${
                 active
                   ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]'
-                  : 'text-[var(--muted)] hover:bg-black/[0.03] hover:text-[var(--ink)]'
+                  : 'text-[var(--muted)] hover:bg-[var(--hover-soft)] hover:text-[var(--ink)]'
               }`}
             >
               {item.label}
@@ -53,7 +54,10 @@ export function Sidebar() {
         })}
       </nav>
 
-      <p className="px-2 text-[11px] text-[var(--muted)]">v0.1</p>
+      <div className="mt-4 flex flex-col gap-3 px-0.5">
+        <ThemeToggle />
+        <p className="px-1.5 text-[11px] text-[var(--muted)]">v0.1</p>
+      </div>
     </aside>
   );
 }

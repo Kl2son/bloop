@@ -1,4 +1,11 @@
+/**
+ * Базовый URL API.
+ * - dev: пустая строка → запросы на /api идут через Vite proxy (localhost:3001)
+ * - prod: VITE_API_URL из .env.production → https://bloop-avdi.onrender.com
+ */
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
+
+export { API_BASE };
 
 export class ApiError extends Error {
   status: number;

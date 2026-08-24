@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 
-:root {
+:root,
+[data-theme='light'] {
   --bg: #f3f2ef;
   --bg-elevated: #fafaf8;
   --ink: #141413;
@@ -9,8 +10,25 @@
   --accent: #1f5c4d;
   --accent-soft: #e8f0ed;
   --player: #1a1a18;
+  --hover-soft: rgba(0, 0, 0, 0.03);
   --font-sans: 'DM Sans', sans-serif;
   --font-display: 'Syne', sans-serif;
+  --bg-glow-a: #dde8e4;
+  --bg-glow-b: #e8e4dc;
+}
+
+[data-theme='dark'] {
+  --bg: #121211;
+  --bg-elevated: #1a1a18;
+  --ink: #f2f1ec;
+  --muted: #9a9890;
+  --line: #2c2c28;
+  --accent: #7eb8a6;
+  --accent-soft: #1e2e29;
+  --player: #0d0d0c;
+  --hover-soft: rgba(255, 255, 255, 0.04);
+  --bg-glow-a: #1a2a24;
+  --bg-glow-b: #242018;
 }
 
 * {
@@ -28,10 +46,11 @@ body {
   font-family: var(--font-sans);
   color: var(--ink);
   background:
-    radial-gradient(ellipse 80% 50% at 10% -10%, #dde8e4 0%, transparent 55%),
-    radial-gradient(ellipse 60% 40% at 100% 0%, #e8e4dc 0%, transparent 45%),
+    radial-gradient(ellipse 80% 50% at 10% -10%, var(--bg-glow-a) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, var(--bg-glow-b) 0%, transparent 45%),
     var(--bg);
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 button {
