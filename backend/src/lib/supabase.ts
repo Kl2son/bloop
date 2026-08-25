@@ -32,6 +32,10 @@ dotenv.config();
 const supabaseUrl = process.env.SUPABASE_URL?.trim().replace(/\/$/, '');
 const supabaseKey = process.env.SUPABASE_KEY?.trim();
 
+export function getSupabaseUrl(): string | null {
+  return supabaseUrl || null;
+}
+
 if (!supabaseUrl || !supabaseKey) {
   console.warn(
     '[supabase] SUPABASE_URL / SUPABASE_KEY не заданы. ' +
