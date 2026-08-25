@@ -1,9 +1,14 @@
 /**
- * Базовый URL API.
- * - dev: пустая строка → запросы на /api идут через Vite proxy (localhost:3001)
- * - prod: VITE_API_URL из .env.production → https://bloop-avdi.onrender.com
+ * Базовый URL бэкенда (Render).
+ * Фронтенд ходит ТОЛЬКО сюда — не на *.supabase.co (блокируется у части провайдеров).
+ *
+ * Приоритет: VITE_BACKEND_URL → VITE_API_URL → '' (dev: Vite proxy /api → localhost:3001)
  */
-const API_BASE = import.meta.env.VITE_API_URL ?? '';
+const API_BASE = (
+  import.meta.env.VITE_BACKEND_URL ||
+  import.meta.env.VITE_API_URL ||
+  ''
+).replace(/\/$/, '');
 
 export { API_BASE };
 
@@ -23,8 +28,6 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const headers = new Headers(options.headers);
 
-  // Для FormData нельзя ставить Content-Type вручную —
-  // браузер сам добавит multipart/form-data; boundary=…
   const isFormData =
     typeof FormData !== 'undefined' && options.body instanceof FormData;
 
@@ -32,10 +35,22 @@ export async function apiRequest<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
+  const url = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers,
+    });
+  } catch (err) {
+    // Типичный "Failed to fetch" — бэкенд недоступен / CORS / offline
+    console.error('[api] сеть недоступна:', url, err);
+    throw new ApiError(
+      'Не удалось связаться с сервером Bloop. Попробуйте позже.',
+      0,
+    );
+  }
 
   const body = await response.json().catch(() => ({}));
 

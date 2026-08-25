@@ -3,17 +3,15 @@ import { beatsService } from '../services/beats.service';
 import type { Beat } from '../types';
 
 /**
- * Каталог битов в Zustand — чтобы после upload новый трек
- * сразу попал в ленту без обязательного полного рефетча.
+ * Каталог битов — данные ТОЛЬКО с нашего Express API (/api/beats),
+ * бэкенд сам читает Supabase. Фронт не знает про supabase.co.
  */
 interface BeatsState {
   beats: Beat[];
   loading: boolean;
   error: string | null;
   fetchBeats: () => Promise<void>;
-  /** Добавить только что загруженный бит в начало ленты */
   prependBeat: (beat: Beat) => void;
-  /** Убрать бит из ленты после DELETE */
   removeBeat: (id: string) => void;
 }
 
@@ -28,10 +26,10 @@ export const useBeatsStore = create<BeatsState>((set) => ({
       const response = await beatsService.getAll();
       set({ beats: response.data ?? [], loading: false });
     } catch (err) {
-      set({
-        error: err instanceof Error ? err.message : 'Failed to load beats',
-        loading: false,
-      });
+      const message =
+        err instanceof Error ? err.message : 'Не удалось загрузить каталог';
+      console.error('[beats] ошибка загрузки с бэкенда:', message);
+      set({ error: message, loading: false });
     }
   },
 

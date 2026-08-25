@@ -3,14 +3,8 @@ import { API_BASE } from './api';
 const BEATS_PUBLIC_MARKER = '/storage/v1/object/public/beats/';
 
 /**
- * Достаёт относительный путь внутри бакета `beats`
- * из полного Supabase URL или уже короткого path.
- *
- * Примеры:
- *   https://xxx.supabase.co/storage/v1/object/public/beats/covers/a.jpg
- *     → covers/a.jpg
- *   covers/a.jpg → covers/a.jpg
- *   audio/track.mp3 → audio/track.mp3
+ * Вырезает путь внутри бакета из полного Supabase URL.
+ * https://xxx.supabase.co/storage/v1/object/public/beats/covers/a.jpg → covers/a.jpg
  */
 export function extractBucketPath(url: string): string | null {
   if (!url) return null;
@@ -19,48 +13,58 @@ export function extractBucketPath(url: string): string | null {
 
   if (trimmed.includes(BEATS_PUBLIC_MARKER)) {
     const after = trimmed.split(BEATS_PUBLIC_MARKER)[1] ?? '';
-    return decodeURIComponent(after.split('?')[0] ?? '').replace(/^\/+/, '') || null;
+    return (
+      decodeURIComponent(after.split('?')[0] ?? '').replace(/^\/+/, '') || null
+    );
   }
 
-  // Уже относительный путь в бакете
+  // Уже относительный путь: covers/... или audio/...
   const relative = trimmed.replace(/^\/+/, '');
   if (/^(audio|covers)\//i.test(relative)) {
     return relative;
+  }
+
+  // Вариант path=beats/covers/... — убираем префикс бакета
+  if (/^beats\/(audio|covers)\//i.test(relative)) {
+    return relative.replace(/^beats\//i, '');
   }
 
   return null;
 }
 
 /**
- * URL медиа через reverse-proxy бэкенда.
+ * Все медиа только через бэкенд-прокси:
+ *   ${VITE_BACKEND_URL}/api/media?path=covers/file.jpg
  *
- * Почему так: прямые ссылки на *.supabase.co у части провайдеров блокируются,
- * из‑за этого зависают обложки и плеер. Бэкенд на Render качает файл сам
- * (сервер → Supabase) и стримит клиенту с /api/media?path=...
- *
- * Внешние демо-URL (SoundHelix, picsum) не трогаем — они не из нашего бакета.
+ * Браузер никогда не ходит на supabase.co — файл качает Render.
  */
 export function mediaUrl(url: string): string {
   if (!url) return url;
 
   const bucketPath = extractBucketPath(url);
   if (bucketPath) {
-    const base = (API_BASE || '').replace(/\/$/, '');
-    return `${base}/api/media?path=${encodeURIComponent(bucketPath)}`;
+    return `${API_BASE}/api/media?path=${encodeURIComponent(bucketPath)}`;
   }
 
-  // Не Supabase Storage — отдаём как есть (или дополняем API_BASE для /uploads)
-  if (/^https?:\/\//i.test(url)) {
+  // Внешние демо (SoundHelix и т.п.) — без supabase
+  if (/^https?:\/\//i.test(url) && !url.includes('supabase.co')) {
     return url;
   }
 
-  const base = (API_BASE || '').replace(/\/$/, '');
+  // Любой оставшийся supabase URL — не отдаём напрямую
+  if (url.includes('supabase.co')) {
+    console.warn('[media] не удалось разобрать path, URL скрыт:', url);
+    return `${API_BASE}/api/media?path=`;
+  }
+
   const path = url.startsWith('/') ? url : `/${url}`;
-  return `${base}${path}`;
+  return `${API_BASE}${path}`;
 }
 
-/** Загруженный пользователем бит (Supabase Storage или старый /uploads) */
-export function isUploadedBeat(beat: { audioUrl: string; coverUrl: string }): boolean {
+export function isUploadedBeat(beat: {
+  audioUrl: string;
+  coverUrl: string;
+}): boolean {
   const urls = `${beat.audioUrl} ${beat.coverUrl}`;
   return (
     urls.includes('/uploads/') ||
