@@ -1,8 +1,14 @@
 /**
- * Базовый URL бэкенда (Render).
- * Фронтенд ходит ТОЛЬКО сюда — не на *.supabase.co (блокируется у части провайдеров).
+ * Базовый URL API.
  *
- * Приоритет: VITE_BACKEND_URL → VITE_API_URL → '' (dev: Vite proxy /api → localhost:3001)
+ * Прод (Vercel): оставляем пустым → запросы идут на тот же origin (`/api/...`),
+ * а vercel.json reverse-proxy проксирует их на Render. Так браузер в РФ
+ * не ходит на onrender.com / supabase.co (часто режутся провайдером).
+ *
+ * Локально: тоже пусто → Vite proxy /api → localhost:3001.
+ *
+ * Приоритет: VITE_BACKEND_URL → VITE_API_URL → ''.
+ * Хвостовой `/` срезаем, чтобы не получить `//api/...`.
  */
 const API_BASE = (
   import.meta.env.VITE_BACKEND_URL ||
@@ -35,7 +41,9 @@ export async function apiRequest<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  const url = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+  // Нормализация стыка: API_BASE без `/`, path всегда с ведущим `/`
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = `${API_BASE}${normalizedPath}`;
 
   let response: Response;
   try {

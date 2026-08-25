@@ -18,6 +18,9 @@ function paramId(req: Request): string {
 export const getBeats: RequestHandler = async (_req, res): Promise<void> => {
   try {
     if (!isSupabaseConfigured()) {
+      console.error(
+        '[GET /api/beats] Supabase не настроен: нужны SUPABASE_URL и SUPABASE_KEY в env Render',
+      );
       res.status(503).json({
         success: false,
         message: 'Supabase не настроен (SUPABASE_URL / SUPABASE_KEY)',
@@ -25,10 +28,16 @@ export const getBeats: RequestHandler = async (_req, res): Promise<void> => {
       return;
     }
 
+    // listBeats() → getSupabase().from('beats').select('*') — запрос с Render (EU) в Supabase
     const beats = await listBeats();
     res.json({ success: true, data: beats });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Ошибка чтения каталога';
+    console.error('[GET /api/beats] ошибка чтения каталога из Supabase:', {
+      message,
+      stack: err instanceof Error ? err.stack : undefined,
+      err,
+    });
     res.status(500).json({ success: false, message });
   }
 };

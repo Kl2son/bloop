@@ -33,10 +33,8 @@ export function extractBucketPath(url: string): string | null {
 }
 
 /**
- * Все медиа только через бэкенд-прокси:
- *   ${VITE_BACKEND_URL}/api/media?path=covers/file.jpg
- *
- * Браузер никогда не ходит на supabase.co — файл качает Render.
+ * Все медиа только через наш /api/media (same-origin на Vercel → Render → Storage).
+ * Браузер никогда не ходит на supabase.co напрямую.
  */
 export function mediaUrl(url: string): string {
   if (!url) return url;
